@@ -663,8 +663,6 @@ impl SymmetricAlgorithmKey {
 #[cfg(feature = "block-cipher")]
 pub use block_cipher_trait::BlockCipherKey;
 #[cfg(feature = "block-cipher")]
-pub use cipher::block as block_cipher;
-#[cfg(feature = "block-cipher")]
 mod block_cipher_trait {
     use super::*;
     use core::convert::TryFrom;
@@ -730,8 +728,12 @@ mod block_cipher_trait {
         }
     }
 
-    use block_cipher::generic_array::{typenum, ArrayLength};
-    use block_cipher::{self, Block, BlockCipher, Key, NewBlockCipher};
+    use cipher::generic_array::{typenum, ArrayLength};
+    // TODO cipher::Key from cipher 0.25 was renamed to cipher::BlockCipherKey in 0.3. We already
+    // have our own BlockCipherKey, so keep the old name for now.
+    use cipher::BlockCipherKey as Key;
+    use cipher::{self, Block, NewBlockCipher};
+    use cipher::{BlockCipher, BlockDecrypt, BlockEncrypt};
 
     impl<T: typenum::Unsigned> KeyBits for T {
         const VALUE: Option<usize> = Some(Self::USIZE);
@@ -781,7 +783,9 @@ mod block_cipher_trait {
                 /// Number of blocks which can be processed in parallel by
                 /// cipher implementation
                 type ParBlocks = $par_blocks;
+            }
 
+            impl<B: KeyBits> BlockEncrypt for BlockCipherKey<$algo, B> {
                 /// Encrypt block in-place
                 fn encrypt_block(&self, block: &mut Block<Self>) {
                     // NOTE: We check that chaining mode is already ECB in
@@ -792,7 +796,9 @@ mod block_cipher_trait {
                     let mut buf = buf.into_inner();
                     block[..].copy_from_slice(buf.as_mut_slice());
                 }
+            }
 
+            impl<B: KeyBits> BlockDecrypt for BlockCipherKey<$algo, B> {
                 /// Decrypt block in-place
                 fn decrypt_block(&self, block: &mut Block<Self>) {
                     // NOTE: We check that chaining mode is already ECB in
@@ -951,7 +957,7 @@ mod tests {
 
     #[cfg(feature = "block-cipher")]
     fn _assert_aes_keysize_valid() {
-        use block_cipher::{generic_array::typenum, NewBlockCipher};
+        use cipher::{generic_array::typenum, NewBlockCipher};
         fn _assert_trait_impl<T: NewBlockCipher>() {}
         _assert_trait_impl::<BlockCipherKey<Aes, typenum::U128>>();
         _assert_trait_impl::<BlockCipherKey<Aes, typenum::U192>>();
@@ -961,8 +967,8 @@ mod tests {
     #[cfg(feature = "block-cipher")]
     #[test]
     fn cipher_trait() {
-        use block_cipher::generic_array::{typenum::Unsigned, GenericArray};
-        use block_cipher::BlockCipher;
+        use cipher::generic_array::{typenum::Unsigned, GenericArray};
+        use cipher::{BlockCipher, BlockDecrypt, BlockEncrypt};
         use core::convert::TryFrom;
 
         macro_rules! run_tests {
@@ -1007,7 +1013,7 @@ mod tests {
     #[cfg(feature = "block-cipher")]
     #[test]
     fn marker_bits() {
-        use block_cipher::generic_array::typenum;
+        use cipher::generic_array::typenum;
         use core::convert::TryFrom;
 
         let algo = SymmetricAlgorithm::open(SymmetricAlgorithmId::Aes, ChainingMode::Ecb).unwrap();
