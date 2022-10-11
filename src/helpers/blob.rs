@@ -35,6 +35,7 @@ impl<'a, T: BlobLayout> Blob<T> {
         // `#[repr(C)]` (and so is `T::Header`, because it  implements `AsBytes`
         // which requires being `#[repr(C)]`), so the reference to its first
         // field will be aligned at least as `T::Header`.
+        #[allow(unaligned_references)]
         &self.0
     }
 
