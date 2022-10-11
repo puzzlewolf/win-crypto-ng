@@ -35,7 +35,7 @@ impl<'a, T: BlobLayout> Blob<T> {
         // `#[repr(C)]` (and so is `T::Header`, because it  implements `AsBytes`
         // which requires being `#[repr(C)]`), so the reference to its first
         // field will be aligned at least as `T::Header`.
-        unsafe { &self.0 }
+        &self.0
     }
 
     pub(crate) fn tail(&self) -> &[u8] {
